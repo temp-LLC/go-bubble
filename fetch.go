@@ -32,32 +32,16 @@ type (
 	}
 )
 
-func NewConstraint(key string, constraintType string, value interface{}) *Constraint {
-	return &Constraint{
-		Key:            key,
-		ConstraintType: constraintType,
-		Value:          value,
-	}
-}
-
-// func NewRequest(url string, token string, target string) *Request {
-// 	return &Request{
-// 		url:    url,
-// 		token:  token,
-// 		target: target,
-// 	}
-// }
-
-func Fetch(req Request) error {
+func Fetch[T any](req Request) ([]T, error) {
 	u, err := url.Parse(req.URL)
 	if err != nil {
-		return fmt.Errorf("invalid url: %w", err)
+		return nil, fmt.Errorf("invalid url: %w", err)
 	}
 	u.Path = path.Join(u.Path, "api/1.1/obj", req.Target)
 
 	qcs, err := json.Marshal(req.Constraints)
 	if err != nil {
-		return fmt.Errorf("json.Marshal: %w", err)
+		return nil, fmt.Errorf("json.Marshal: %w", err)
 	}
 
 	q := u.Query()
@@ -67,15 +51,13 @@ func Fetch(req Request) error {
 
 	r, err := http.NewRequest(http.MethodGet, u.String(), nil)
 	if err != nil {
-		return fmt.Errorf("http.NewRequest: %w", err)
+		return nil, fmt.Errorf("http.NewRequest: %w", err)
 	}
 	r.Header.Add("Authorization", "Bearer"+" "+req.Token)
 
-  fmt.Printf("req: %+v", r)
-
 	res, err := http.DefaultClient.Do(r)
 	if err != nil {
-		return fmt.Errorf("http.Get: %w", err)
+		return nil, fmt.Errorf("http.Get: %w", err)
 	}
 	defer func() {
 		err := res.Body.Close()
@@ -87,15 +69,18 @@ func Fetch(req Request) error {
 
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
-		return fmt.Errorf("io.ReadAll: %w", err)
+		return nil, fmt.Errorf("io.ReadAll: %w", err)
 	}
-  var p payload
-  if err := json.Unmarshal(body, &p); err != nil {
-    return fmt.Errorf("json.Unmarshal: %w", err)
+	var p payload
+	if err := json.Unmarshal(body, &p); err != nil {
+		return nil, fmt.Errorf("json.Unmarshal: %w", err)
+	}
+  var dest []T
+  if err = json.Unmarshal(p.Response.Results, &dest);err != nil {
+    return nil, fmt.Errorf("json.Unmarshal: %w", err)
   }
-  fmt.Println(p.Response)
 
-	return nil
+	return dest, nil
 }
 
 func SampleGenerics[T any](a, b T) []T {
