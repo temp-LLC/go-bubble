@@ -13,12 +13,6 @@ import (
 const FetchLimitMax = 100
 
 type (
-	Constraint struct {
-		Key            string      `json:"key"`
-		ConstraintType string      `json:"constraint_type"`
-		Value          interface{} `json:"value"`
-	}
-
 	FetchRequest struct {
 		URL         string
 		Token       string
