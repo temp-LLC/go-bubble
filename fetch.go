@@ -88,9 +88,9 @@ func fetch[T any](fetchRequest FetchRequest, cursor int) (parsedResponse *parsed
 	if err != nil {
 		return nil, fmt.Errorf("http.Get: %w", err)
 	}
-  if rawResponse.StatusCode != http.StatusOK {
-    return nil, fmt.Errorf("unexpected status: %d", rawResponse.StatusCode)
-  }
+	if rawResponse.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status: %d", rawResponse.StatusCode)
+	}
 	defer func() {
 		if cerr := rawResponse.Body.Close(); cerr != nil {
 			err = fmt.Errorf("original: %w, close: %w", err, cerr)
