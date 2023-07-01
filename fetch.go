@@ -84,7 +84,7 @@ func parseResponse[T any](res *http.Response) (*parsedResponse[T], error) {
 	}, nil
 }
 
-func fetch[T any](fetchRequest FetchRequest, cursor int) (*parsedResponse[T], error) {
+func fetch[T any](fetchRequest FetchRequest, cursor int) (parsedResponse *parsedResponse[T], err error) {
 	httpReq, err := newHttpRequest(fetchRequest, cursor)
 	if err != nil {
 		return nil, fmt.Errorf("generateRequest: %w", err)
@@ -95,19 +95,17 @@ func fetch[T any](fetchRequest FetchRequest, cursor int) (*parsedResponse[T], er
 		return nil, fmt.Errorf("http.Get: %w", err)
 	}
 	defer func() {
-		err := rawResponse.Body.Close()
-		if err != nil {
-			// TODO
-			fmt.Println(err)
-		}
+		if cerr := rawResponse.Body.Close(); cerr != nil {
+      err = fmt.Errorf("original: %w, close: %w", err, cerr)
+    }
 	}()
 
-	parsedResponse, err := parseResponse[T](rawResponse)
+	parsedResponse, err = parseResponse[T](rawResponse)
 	if err != nil {
 		return nil, fmt.Errorf("parseResponse: %w", err)
 	}
 
-	return parsedResponse, nil
+	return
 }
 
 func Fetch[T any](req FetchRequest) ([]T, error) {
