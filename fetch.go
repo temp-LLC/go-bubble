@@ -9,6 +9,8 @@ import (
 	"path"
 )
 
+const FetchLimitMax = 100
+
 type (
 	Constraint struct {
 		Key            string      `json:"key"`
@@ -30,9 +32,15 @@ type (
 			Remaining int             `json:"remaining"`
 		} `json:"response"`
 	}
+
+	parsedResponse[T any] struct {
+		data      []T
+		remaining int
+	}
 )
 
-func generateRequest(req FetchRequest)(*http.Request, error) {
+func generateRequest(req FetchRequest, cursor int) (*http.Request, error) {
+	// TODO: cursor考慮
 	u, err := url.Parse(req.URL)
 	if err != nil {
 		return nil, fmt.Errorf("invalid url: %w", err)
@@ -54,10 +62,10 @@ func generateRequest(req FetchRequest)(*http.Request, error) {
 		return nil, fmt.Errorf("http.NewRequest: %w", err)
 	}
 	r.Header.Add("Authorization", "Bearer"+" "+req.Token)
-  return r, nil
+	return r, nil
 }
 
-func parseResponse[T any](res *http.Response) ([]T, error) {
+func parseResponse[T any](res *http.Response) (*parsedResponse[T], error) {
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, fmt.Errorf("io.ReadAll: %w", err)
@@ -66,34 +74,42 @@ func parseResponse[T any](res *http.Response) ([]T, error) {
 	if err := json.Unmarshal(body, &p); err != nil {
 		return nil, fmt.Errorf("json.Unmarshal: %w", err)
 	}
-  var dest []T
-  if err = json.Unmarshal(p.Response.Results, &dest);err != nil {
-    return nil, fmt.Errorf("json.Unmarshal: %w", err)
-  }
-  return dest, nil
+	var dest []T
+	if err = json.Unmarshal(p.Response.Results, &dest); err != nil {
+		return nil, fmt.Errorf("json.Unmarshal: %w", err)
+	}
+	return &parsedResponse[T]{
+		data:      dest,
+		remaining: p.Response.Remaining,
+	}, nil
 }
 
 func Fetch[T any](req FetchRequest) ([]T, error) {
-  r, err := generateRequest(req)
-  if err != nil {
-    return nil, fmt.Errorf("generateRequest: %w", err)
-  }
-
-	res, err := http.DefaultClient.Do(r)
-	if err != nil {
-		return nil, fmt.Errorf("http.Get: %w", err)
-	}
-	defer func() {
-		err := res.Body.Close()
+	var collected []T
+	for cursor := 0; ; cursor += FetchLimitMax {
+		req, err := generateRequest(req, cursor)
 		if err != nil {
-			// TODO
-			fmt.Println(err)
+			return nil, fmt.Errorf("generateRequest: %w", err)
 		}
-	}()
 
-  ret, err := parseResponse[T](res)
-  if err != nil {
-    return nil, fmt.Errorf("parseResponse: %w", err)
-  }
-	return ret, nil
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("http.Get: %w", err)
+		}
+		defer func() {
+			err := res.Body.Close()
+			if err != nil {
+				// TODO
+				fmt.Println(err)
+			}
+		}()
+
+		parsedResponse, err := parseResponse[T](res)
+		if err != nil {
+			return nil, fmt.Errorf("parseResponse: %w", err)
+		}
+		collected = append(collected, parsedResponse.data...)
+		break
+	}
+	return collected, nil
 }
