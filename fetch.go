@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"strconv"
 )
 
 const FetchLimitMax = 100
@@ -39,8 +40,7 @@ type (
 	}
 )
 
-func generateRequest(req FetchRequest, cursor int) (*http.Request, error) {
-	// TODO: cursor考慮
+func newHttpRequest(req FetchRequest, cursor int) (*http.Request, error) {
 	u, err := url.Parse(req.URL)
 	if err != nil {
 		return nil, fmt.Errorf("invalid url: %w", err)
@@ -54,7 +54,7 @@ func generateRequest(req FetchRequest, cursor int) (*http.Request, error) {
 
 	q := u.Query()
 	q.Set("constraints", string(qcs))
-	// q.Set("cursor", strconv.Itoa(cursor))
+	q.Set("cursor", strconv.Itoa(cursor))
 	u.RawQuery = q.Encode()
 
 	r, err := http.NewRequest(http.MethodGet, u.String(), nil)
@@ -84,32 +84,43 @@ func parseResponse[T any](res *http.Response) (*parsedResponse[T], error) {
 	}, nil
 }
 
+func fetch[T any](fetchRequest FetchRequest, cursor int) (*parsedResponse[T], error) {
+	httpReq, err := newHttpRequest(fetchRequest, cursor)
+	if err != nil {
+		return nil, fmt.Errorf("generateRequest: %w", err)
+	}
+
+	rawResponse, err := http.DefaultClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("http.Get: %w", err)
+	}
+	defer func() {
+		err := rawResponse.Body.Close()
+		if err != nil {
+			// TODO
+			fmt.Println(err)
+		}
+	}()
+
+	parsedResponse, err := parseResponse[T](rawResponse)
+	if err != nil {
+		return nil, fmt.Errorf("parseResponse: %w", err)
+	}
+
+	return parsedResponse, nil
+}
+
 func Fetch[T any](req FetchRequest) ([]T, error) {
 	var collected []T
 	for cursor := 0; ; cursor += FetchLimitMax {
-		req, err := generateRequest(req, cursor)
+		parsedResponse, err := fetch[T](req, cursor)
 		if err != nil {
-			return nil, fmt.Errorf("generateRequest: %w", err)
+			return nil, fmt.Errorf("fetch: %w", err)
 		}
 
-		res, err := http.DefaultClient.Do(req)
-		if err != nil {
-			return nil, fmt.Errorf("http.Get: %w", err)
-		}
-		defer func() {
-			err := res.Body.Close()
-			if err != nil {
-				// TODO
-				fmt.Println(err)
-			}
-		}()
-
-		parsedResponse, err := parseResponse[T](res)
-		if err != nil {
-			return nil, fmt.Errorf("parseResponse: %w", err)
-		}
 		collected = append(collected, parsedResponse.data...)
-		break
+		if parsedResponse.remaining == 0 {
+			return collected, nil
+		}
 	}
-	return collected, nil
 }
