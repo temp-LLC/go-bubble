@@ -96,8 +96,8 @@ func fetch[T any](fetchRequest FetchRequest, cursor int) (parsedResponse *parsed
 	}
 	defer func() {
 		if cerr := rawResponse.Body.Close(); cerr != nil {
-      err = fmt.Errorf("original: %w, close: %w", err, cerr)
-    }
+			err = fmt.Errorf("original: %w, close: %w", err, cerr)
+		}
 	}()
 
 	parsedResponse, err = parseResponse[T](rawResponse)
