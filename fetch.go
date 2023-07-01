@@ -82,7 +82,3 @@ func Fetch[T any](req Request) ([]T, error) {
 
 	return dest, nil
 }
-
-func SampleGenerics[T any](a, b T) []T {
-	return []T{a, b}
-}
