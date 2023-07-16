@@ -1,5 +1,9 @@
 package gobubble
 
+import "fmt"
+
+const KeyID = "_id"
+
 type (
 	FetchIDsRequest struct {
 		URL         string
@@ -17,10 +21,27 @@ func fetchCount(ids string) int {
 	return FetchLimitMax
 }
 
-func FetchByIDs[T any](ids string) ([]T, error) {
+func FetchByIDs[T any](req FetchIDsRequest) ([]T, error) {
 	var collected []T
+	ids := req.IDs
 	for len(ids) > 0 {
 		fetchCount := fetchCount(ids)
+		ret, err := Fetch[T](
+			FetchRequest{
+				URL:    req.URL,
+				Token:  req.Token,
+				Target: req.Target,
+				Constraints: append(
+					req.Constraints,
+					Constraint{
+						KeyID, In, ids[:fetchCount],
+					}),
+			})
+		if err != nil {
+			return nil, fmt.Errorf("fetch: %w", err)
+		}
+
+		collected = append(collected, ret...)
 		ids = ids[fetchCount:]
 	}
 	return collected, nil
