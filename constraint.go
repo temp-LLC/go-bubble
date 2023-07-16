@@ -11,6 +11,7 @@ type (
 )
 
 const (
+	KeyID                   = "_id"
 	Equal    ConstraintType = "equals"
 	NotEqual ConstraintType = "not equal"
 	In       ConstraintType = "in"
