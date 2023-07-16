@@ -8,11 +8,11 @@ type (
 		Token       string
 		Target      string
 		Constraints []Constraint
-		IDs         string
+		IDs         []string
 	}
 )
 
-func fetchCount(ids string) int {
+func fetchCount(ids []string) int {
 	if len(ids) < FetchLimitMax {
 		return len(ids)
 	}
