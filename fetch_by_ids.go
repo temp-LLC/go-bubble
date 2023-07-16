@@ -2,8 +2,6 @@ package gobubble
 
 import "fmt"
 
-const KeyID = "_id"
-
 type (
 	FetchIDsRequest struct {
 		URL         string
@@ -26,7 +24,7 @@ func FetchByIDs[T any](req FetchIDsRequest) ([]T, error) {
 	ids := req.IDs
 	for len(ids) > 0 {
 		fetchCount := fetchCount(ids)
-		ret, err := Fetch[T](
+		fetched, err := Fetch[T](
 			FetchRequest{
 				URL:    req.URL,
 				Token:  req.Token,
@@ -41,33 +39,8 @@ func FetchByIDs[T any](req FetchIDsRequest) ([]T, error) {
 			return nil, fmt.Errorf("fetch: %w", err)
 		}
 
-		collected = append(collected, ret...)
+		collected = append(collected, fetched...)
 		ids = ids[fetchCount:]
 	}
 	return collected, nil
 }
-
-/*
-	var allDateApplications []entity.DateApplication
-	for len(ids) > 0 {
-		lenIDs := len(ids)
-		var n int
-		if lenIDs < bubble.MaxLimit {
-			n = lenIDs
-		} else {
-			n = bubble.MaxLimit
-		}
-
-		c := append(constraints, bubble.GenerateConstraint(bubble.KeyID, bubble.ConstraintTypeIn, ids[:n]))
-		dateApplications, err := d.Fetch(c)
-		if err != nil {
-			return nil, err
-		}
-
-		allDateApplications = append(allDateApplications, dateApplications...)
-		ids = ids[n:]
-	}
-
-	return allDateApplications, nil
-
-*/
