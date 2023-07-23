@@ -34,6 +34,15 @@ type (
 	}
 )
 
+func NewFetchRequest(url, token, target string, constants []Constraint) FetchRequest {
+	return FetchRequest{
+		URL:         url,
+		Token:       token,
+		Target:      target,
+		Constraints: constants,
+	}
+}
+
 func newHttpRequest(req FetchRequest, cursor int) (*http.Request, error) {
 	u, err := url.Parse(req.URL)
 	if err != nil {
