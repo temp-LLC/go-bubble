@@ -3,7 +3,7 @@ package gobubble
 import "fmt"
 
 type (
-	FetchIDsRequest struct {
+	FetchByIDsRequest struct {
 		URL         string
 		Token       string
 		Target      string
@@ -12,6 +12,20 @@ type (
 	}
 )
 
+func NewFetchByIDsRequest(
+	url, token, target string,
+	constants []Constraint,
+	ids []string,
+) FetchByIDsRequest {
+	return FetchByIDsRequest{
+		URL:         url,
+		Token:       token,
+		Target:      target,
+		Constraints: constants,
+		IDs:         ids,
+	}
+}
+
 func fetchCount(ids []string) int {
 	if len(ids) < FetchLimitMax {
 		return len(ids)
@@ -19,7 +33,7 @@ func fetchCount(ids []string) int {
 	return FetchLimitMax
 }
 
-func FetchByIDs[T any](req FetchIDsRequest) ([]T, error) {
+func FetchByIDs[T any](req FetchByIDsRequest) ([]T, error) {
 	var collected []T
 	ids := req.IDs
 	for len(ids) > 0 {
